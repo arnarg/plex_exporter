@@ -88,7 +88,7 @@ func Run(c *cli.Context) error {
 	}
 
 	// Create the Prometheus collector
-	collectorLogger := log.WithFields(log.Fields{"context": "colletor"})
+	collectorLogger := log.WithFields(log.Fields{"context": "collector"})
 	pc := collector.NewPlexCollector(client, collectorLogger)
 	prometheus.MustRegister(pc)
 
