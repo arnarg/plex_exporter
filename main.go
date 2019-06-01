@@ -17,37 +17,9 @@ import (
 
 var Version = "0.1.0"
 
-func run(c *cli.Context) error {
+func Run(c *cli.Context) error {
 	addr := c.String("listen-address")
 	path := c.String("config-path")
-	verbose := c.String("log-level")
-	format := c.String("format")
-
-	// Set verbosity level
-	switch verbose {
-	case "trace":
-		log.SetLevel(log.TraceLevel)
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "warn":
-		log.SetLevel(log.WarnLevel)
-	case "err":
-		log.SetLevel(log.ErrorLevel)
-	default:
-		return fmt.Errorf("Available log levels are trace, debug, info, warn, err")
-	}
-
-	// Set log format
-	switch format {
-	case "text":
-		log.SetFormatter(&log.TextFormatter{})
-	case "json":
-		log.SetFormatter(&log.JSONFormatter{})
-	default:
-		return fmt.Errorf("Available log formats are text, json")
-	}
 
 	// Loading persisted config
 	conf, isNew, err := config.Load(path)
@@ -127,6 +99,38 @@ func run(c *cli.Context) error {
 	return nil
 }
 
+func Init(c *cli.Context) error {
+	verbose := c.String("log-level")
+	format := c.String("format")
+
+	// Set verbosity level
+	switch verbose {
+	case "trace":
+		log.SetLevel(log.TraceLevel)
+	case "debug":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "err":
+		log.SetLevel(log.ErrorLevel)
+	default:
+		return fmt.Errorf("Available log levels are trace, debug, info, warn, err")
+	}
+
+	// Set log format
+	switch format {
+	case "text":
+		log.SetFormatter(&log.TextFormatter{})
+	case "json":
+		log.SetFormatter(&log.JSONFormatter{})
+	default:
+		return fmt.Errorf("Available log formats are text, json")
+	}
+	return nil
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "plex_exporter"
@@ -156,7 +160,8 @@ func main() {
 		},
 	}
 
-	app.Action = run
+	app.Action = Run
+	app.Before = Init
 
 	err := app.Run(os.Args)
 	if err != nil {
