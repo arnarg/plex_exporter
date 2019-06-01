@@ -31,7 +31,7 @@ func Run(c *cli.Context) error {
 	// I mainly do this to run into config saving problems
 	// before requesting an authentication PIN
 	if isNew {
-		log.Debug(fmt.Sprintf("Saving new generated config to %s", path))
+		log.Debugf("Saving new generated config to %s", path)
 		err = config.Save(conf, path)
 		if err != nil {
 			return fmt.Errorf("Could not save config file: %s", err)
@@ -48,7 +48,7 @@ func Run(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("Could not make a pin request: %s", err)
 		}
-		log.Info(fmt.Sprintf("Got PIN code: %s", pinRequest.Code))
+		log.Infof("Got PIN code: %s", pinRequest.Code)
 		log.Info("Go to https://plex.tv/pin and enter pin to authenticate.")
 
 		// Repeatedly check pin request
@@ -94,7 +94,7 @@ func Run(c *cli.Context) error {
 
 	// Start HTTP server
 	http.Handle("/metrics", promhttp.Handler())
-	log.Info(fmt.Sprintf("Beginning to serve on port %s", addr))
+	log.Infof("Beginning to serve on port %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 	return nil
 }
