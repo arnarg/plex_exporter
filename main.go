@@ -140,7 +140,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "listen-address, l",
-			Value: ":8080",
+			Value: ":9594",
 			Usage: "Port for server",
 		},
 		cli.StringFlag{
