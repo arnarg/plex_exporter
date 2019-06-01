@@ -38,6 +38,7 @@ func NewPlexClient(c *config.PlexConfig, v string, l *log.Entry) *PlexClient {
 	}
 }
 
+// Init fetches all Plex Media Servers and stores a reference to them
 func (c *PlexClient) Init() error {
 	if c.Token == "" {
 		return fmt.Errorf("Authentication token missing")
@@ -73,6 +74,8 @@ func (c *PlexClient) Init() error {
 	return nil
 }
 
+// GetSessions fetches sessions from all the servers and stores them in a map
+// using the server's name as the key.
 func (c *PlexClient) GetSessions() (*map[string]api.SessionList, error) {
 	if c.Token == "" {
 		return nil, fmt.Errorf("Authentication token missing")
@@ -81,6 +84,7 @@ func (c *PlexClient) GetSessions() (*map[string]api.SessionList, error) {
 	serverMap := map[string]api.SessionList{}
 
 	// Fetch session list from servers
+	// I don't love this approach but it works for now
 	for _, server := range c.Servers {
 		logger := c.Logger.WithFields(log.Fields{"server": server.Name})
 		sessionListWrapper := api.SessionListWrapper{}
