@@ -16,7 +16,7 @@ import (
 type PlexClient struct {
 	Logger         *log.Entry
 	Token          string
-	Servers        []api.Device
+	Servers        []Server
 	DefaultHeaders map[string]string
 }
 
@@ -24,7 +24,7 @@ func NewPlexClient(c *config.PlexConfig, v string, l *log.Entry) *PlexClient {
 	return &PlexClient{
 		Logger:  l,
 		Token:   c.Token,
-		Servers: []api.Device{},
+		Servers: []Server{},
 		DefaultHeaders: map[string]string{
 			"User-Agent":               fmt.Sprintf("plex_exporter/%s", v),
 			"Accept":                   "application/json",
@@ -65,9 +65,18 @@ func (c *PlexClient) Init() error {
 
 	for _, device := range deviceList.Devices {
 		if strings.Contains(device.Roles, "server") {
-			c.Logger.Debugf("Found server %s", device.Name)
-			c.Servers = append(c.Servers, device)
+			c.Logger.Debugf("Found server \"%s\"", device.Name)
+			server, err := NewServer(&device)
+			if err != nil {
+				c.Logger.Errorf("Could not use server: %s", err)
+				continue
+			}
+			c.Servers = append(c.Servers, *server)
 		}
+	}
+
+	if len(c.Servers) < 1 {
+		return fmt.Errorf("No suitable servers found.")
 	}
 
 	return nil
@@ -75,48 +84,33 @@ func (c *PlexClient) Init() error {
 
 // GetSessions fetches sessions from all the servers and stores them in a map
 // using the server's name as the key.
-func (c *PlexClient) GetSessions() (*map[string]api.SessionList, error) {
-	if c.Token == "" {
-		return nil, fmt.Errorf("Authentication token missing")
-	}
+func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
+	serverMap := map[string]ServerMetric{}
 
-	serverMap := map[string]api.SessionList{}
-
-	// Fetch session list from servers
-	// I don't love this approach but it works for now
 	for _, server := range c.Servers {
 		logger := c.Logger.WithFields(log.Fields{"server": server.Name})
-		sessionListWrapper := api.SessionListWrapper{}
-		successful := false
 
-		for _, conn := range server.Connections {
-			logger.Debugf("Getting session list from URL %s", conn.URI)
-
-			url := fmt.Sprintf("%s/status/sessions", conn.URI)
-			_, body, err := SendRequest("GET", url, AddTokenHeader(c.DefaultHeaders, c.Token))
-			if err != nil {
-				logger.Debugf("Couldn't fetch session list from URL %s: %s", conn.URI, err)
-				continue
-			}
-
-			err = json.Unmarshal(body, &sessionListWrapper)
-			if err != nil {
-				logger.Debugf("Couldn't parse session list response from URL %s: %s", conn.URI, err)
-				logger.Trace(string(body))
-			}
-
-			successful = true
-			break
+		serverMetric := ServerMetric{
+			ID:       server.ID,
+			Name:     server.Name,
+			Product:  server.Product,
+			Version:  server.Version,
+			Platform: server.Platform,
 		}
 
-		if successful {
-			c.Logger.Debugf("Successfully got session list from server \"%s\"", server.Name)
-			serverMap[server.Name] = sessionListWrapper.List
-		} else {
-			c.Logger.Errorf("Unable to get session list from server \"%s\"", server.Name)
+		activeSessions, err := server.GetSessionCount(c.DefaultHeaders)
+		if err != nil {
+			logger.Errorf("Could not get metrics for server \"%s\"", server.Name)
+			logger.Debugf("Could not get session count: %s", err)
+			continue
 		}
+
+		serverMetric.ActiveSessions = activeSessions
+
+		serverMap[server.Name] = serverMetric
 	}
-	return &serverMap, nil
+
+	return serverMap
 }
 
 // GetPinRequest creates a PinRequest using the Plex API and returns it.

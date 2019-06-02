@@ -15,6 +15,10 @@ type Device struct {
 	Name        string       `xml:"name,attr"`
 	ClientID    string       `xml:"clientIdentifier,attr"`
 	Roles       string       `xml:"provides,attr"`
+	AccessToken string       `xml:"accessToken,attr"`
+	Product     string       `xml:"product,attr"`
+	Version     string       `xml:"productVersion,attr"`
+	Platform    string       `xml:"platform"`
 	Connections []Connection `xml:"Connection"`
 }
 

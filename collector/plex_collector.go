@@ -28,13 +28,10 @@ func (c *PlexCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
-	sessionLists, err := c.client.GetSessions()
-	if err != nil {
-		c.Logger.Errorf("Could not get session lists: %s", err)
-	}
+	serverMetrics := c.client.GetServerMetrics()
 
-	for key, value := range *sessionLists {
-		c.Logger.Trace(value)
-		ch <- prometheus.MustNewConstMetric(c.sessionsMetric, prometheus.CounterValue, float64(value.Size), key)
+	for k, v := range serverMetrics {
+		c.Logger.Trace(v)
+		ch <- prometheus.MustNewConstMetric(c.sessionsMetric, prometheus.CounterValue, float64(v.ActiveSessions), k)
 	}
 }
