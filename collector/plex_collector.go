@@ -21,7 +21,7 @@ func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 			"Information about Plex server",
 			[]string{"server_name", "server_id", "product", "version", "platform"}, nil,
 		),
-		sessionsMetric: prometheus.NewDesc("plex_active_sessions_count",
+		sessionsMetric: prometheus.NewDesc("plex_sessions_active_count",
 			"Number of active Plex sessions",
 			[]string{"server_name", "server_id"}, nil,
 		),
