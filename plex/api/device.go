@@ -18,7 +18,7 @@ type Device struct {
 	AccessToken string       `xml:"accessToken,attr"`
 	Product     string       `xml:"product,attr"`
 	Version     string       `xml:"productVersion,attr"`
-	Platform    string       `xml:"platform"`
+	Platform    string       `xml:"platform,attr"`
 	Connections []Connection `xml:"Connection"`
 }
 
