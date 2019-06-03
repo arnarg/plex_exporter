@@ -44,12 +44,12 @@ func Run(c *cli.Context) error {
 
 	// Create a pin request for Plex authentication
 	if client.Token == "" {
+		log.Info("Attempting to autheticate with Plex")
 		pinRequest, err := client.GetPinRequest()
 		if err != nil {
 			return fmt.Errorf("Could not make a pin request: %s", err)
 		}
-		log.Infof("Got PIN code: %s", pinRequest.Code)
-		log.Info("Go to https://plex.tv/pin and enter pin to authenticate.")
+		fmt.Printf("\n\tGot PIN Code: %s\n\tGo to https://plex.tv/pin and enter pin to authenticate.\n\n", pinRequest.Code)
 
 		// Repeatedly check pin request
 		ticker := time.NewTicker(time.Second * 5)
