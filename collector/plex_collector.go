@@ -11,6 +11,7 @@ type PlexCollector struct {
 	client         *plex.PlexClient
 	serverInfo     *prometheus.Desc
 	sessionsMetric *prometheus.Desc
+	libraryMetric  *prometheus.Desc
 }
 
 func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
@@ -24,6 +25,10 @@ func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 		sessionsMetric: prometheus.NewDesc("plex_sessions_active_count",
 			"Number of active Plex sessions",
 			[]string{"server_name", "server_id"}, nil,
+		),
+		libraryMetric: prometheus.NewDesc("plex_library_section_size_count",
+			"Number of items in a library section",
+			[]string{"server_name", "server_id", "name", "type"}, nil,
 		),
 	}
 }
@@ -39,5 +44,9 @@ func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
 		c.Logger.Trace(v)
 		ch <- prometheus.MustNewConstMetric(c.serverInfo, prometheus.CounterValue, 1, v.Name, v.ID, v.Product, v.Version, v.Platform)
 		ch <- prometheus.MustNewConstMetric(c.sessionsMetric, prometheus.GaugeValue, float64(v.ActiveSessions), v.Name, v.ID)
+
+		for _, l := range v.Libraries {
+			ch <- prometheus.MustNewConstMetric(c.libraryMetric, prometheus.GaugeValue, float64(l.Size), v.Name, v.ID, l.Name, l.Type)
+		}
 	}
 }

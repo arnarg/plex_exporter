@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/arnarg/plex_exporter/config"
@@ -82,8 +83,8 @@ func (c *PlexClient) Init() error {
 	return nil
 }
 
-// GetSessions fetches sessions from all the servers and stores them in a map
-// using the server's name as the key.
+// GetServerMetrics fetches all metrics for each server and returns them in a map
+// with the servers' names as keys.
 func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
 	serverMap := map[string]ServerMetric{}
 
@@ -98,14 +99,41 @@ func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
 			Platform: server.Platform,
 		}
 
+		// Get active sessions
 		activeSessions, err := server.GetSessionCount(c.DefaultHeaders)
 		if err != nil {
 			logger.Errorf("Could not get metrics for server \"%s\"", server.Name)
 			logger.Debugf("Could not get session count: %s", err)
 			continue
 		}
-
 		serverMetric.ActiveSessions = activeSessions
+
+		// Get library metrics
+		library, err := server.GetLibrary(c.DefaultHeaders)
+		if err != nil {
+			logger.Errorf("Could not get metrics for server \"%s\"", server.Name)
+			logger.Debugf("Could not get library: %s", err)
+			continue
+		}
+
+		for _, section := range library.Sections {
+			id, err := strconv.Atoi(section.ID)
+			if err != nil {
+				logger.Debugf("Could not convert sections ID to int. (%s)", section.ID)
+			}
+			size, err := server.GetSectionSize(id, c.DefaultHeaders)
+			if err != nil {
+				logger.Debugf("Could not get section size for \"%s\": %s", section.Name, err)
+				continue
+			}
+			libraryMetric := LibraryMetric{
+				Name: section.Name,
+				Type: section.Type,
+				Size: size,
+			}
+
+			serverMetric.Libraries = append(serverMetric.Libraries, libraryMetric)
+		}
 
 		serverMap[server.Name] = serverMetric
 	}
