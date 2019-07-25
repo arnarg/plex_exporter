@@ -11,15 +11,9 @@ type SessionList struct {
 
 type Session struct {
 	Player Player `json:"Player"`
-	User   User   `json:"User"`
 }
 
 type Player struct {
 	Address   string `json:"address"`
 	MachineID string `json:"machineIdentifier"`
-}
-
-type User struct {
-	ID   int    `json:"id"`
-	Name string `json:"title"`
 }
