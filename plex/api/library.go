@@ -1,7 +1,7 @@
 package api
 
-type LibraryWrapper struct {
-	Library Library `json:"MediaContainer"`
+type LibraryResponse struct {
+	Library `json:"MediaContainer"`
 }
 
 type Library struct {
@@ -13,4 +13,12 @@ type Section struct {
 	ID   string `json:"key"`
 	Name string `json:"title"`
 	Type string `json:"type"`
+}
+
+type SectionResponse struct {
+	SectionDetail `json:"MediaContainer"`
+}
+
+type SectionDetail struct {
+	TotalSize int `json:"totalSize"`
 }
