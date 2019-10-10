@@ -1,86 +1,59 @@
 package plex
 
 import (
-	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"runtime"
 	"strconv"
-	"strings"
 
 	"github.com/arnarg/plex_exporter/config"
-	"github.com/arnarg/plex_exporter/plex/api"
-	"github.com/imdario/mergo"
+	v "github.com/arnarg/plex_exporter/version"
 	log "github.com/sirupsen/logrus"
 )
 
+var headers = map[string]string{
+	"User-Agent":               fmt.Sprintf("plex_exporter/%s", v.Version),
+	"Accept":                   "application/json",
+	"X-Plex-Platform":          runtime.GOOS,
+	"X-Plex-Version":           v.Version,
+	"X-Plex-Client-Identifier": fmt.Sprintf("plex-exporter-v%s", v.Version),
+	"X-Plex-Device-Name":       "Plex Exporter",
+	"X-Plex-Product":           "Plex Exporter",
+	"X-Plex-Device":            runtime.GOOS,
+}
+
 type PlexClient struct {
-	Logger         *log.Entry
-	Token          string
-	Servers        []Server
-	DefaultHeaders map[string]string
+	Logger  *log.Entry
+	Servers []*Server
+	headers map[string]string
 }
 
-func NewPlexClient(c *config.PlexConfig, v string, l *log.Entry) *PlexClient {
-	return &PlexClient{
-		Logger:  l,
-		Token:   c.Token,
-		Servers: []Server{},
-		DefaultHeaders: map[string]string{
-			"User-Agent":               fmt.Sprintf("plex_exporter/%s", v),
-			"Accept":                   "application/json",
-			"X-Plex-Platform":          runtime.GOOS,
-			"X-Plex-Version":           v,
-			"X-Plex-Client-Identifier": c.UUID,
-			"X-Plex-Device-Name":       "Plex Exporter",
-		},
-	}
-}
+func NewPlexClient(c *config.PlexConfig, l *log.Entry) (*PlexClient, error) {
+	var serverList []*Server
 
-// Init fetches all Plex Media Servers and stores a reference to them
-func (c *PlexClient) Init() error {
-	if c.Token == "" {
-		return fmt.Errorf("Authentication token missing")
-	}
+	h := headers
+	h["X-Plex-Token"] = c.Token
 
-	// This endpoint only supports XML.
-	// I want to specify the "Accept: application/xml" header
-	// to make sure that if the endpoint does support JSON in
-	// the future it won't break the application.
-	h := map[string]string{
-		"Accept": "application/xml",
-	}
-	mergo.Merge(&h, c.DefaultHeaders)
-
-	_, body, err := SendRequest("GET", "https://plex.tv/api/resources?includeHttps=1", AddTokenHeader(h, c.Token))
-	if err != nil {
-		return err
-	}
-
-	deviceList := api.DeviceList{}
-
-	err = xml.Unmarshal(body, &deviceList)
-	if err != nil {
-		return err
-	}
-
-	for _, device := range deviceList.Devices {
-		if strings.Contains(device.Roles, "server") {
-			c.Logger.Debugf("Found server \"%s\"", device.Name)
-			server, err := NewServer(&device)
-			if err != nil {
-				c.Logger.Errorf("Could not use server: %s", err)
-				continue
-			}
-			c.Servers = append(c.Servers, *server)
+	for _, serverConf := range c.Servers {
+		plexServer, err := NewServer(serverConf)
+		if err != nil {
+			l.Errorf("Could not add server %s: %s", serverConf.BaseURL, err)
+		} else {
+			serverList = append(serverList, plexServer)
 		}
 	}
 
-	if len(c.Servers) < 1 {
-		return fmt.Errorf("No suitable servers found.")
+	if c.AutoDiscover {
+		discoveryList, err := discoverServers(h)
+		if err == nil {
+			serverList = append(serverList, discoveryList...)
+		}
 	}
 
-	return nil
+	return &PlexClient{
+		Logger:  l,
+		Servers: serverList,
+		headers: h,
+	}, nil
 }
 
 // GetServerMetrics fetches all metrics for each server and returns them in a map
@@ -94,13 +67,12 @@ func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
 		serverMetric := ServerMetric{
 			ID:       server.ID,
 			Name:     server.Name,
-			Product:  server.Product,
 			Version:  server.Version,
 			Platform: server.Platform,
 		}
 
 		// Get active sessions
-		activeSessions, err := server.GetSessionCount(c.DefaultHeaders)
+		activeSessions, err := server.GetSessionCount()
 		if err != nil {
 			logger.Errorf("Could not get metrics for server \"%s\"", server.Name)
 			logger.Debugf("Could not get session count: %s", err)
@@ -109,7 +81,7 @@ func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
 		serverMetric.ActiveSessions = activeSessions
 
 		// Get library metrics
-		library, err := server.GetLibrary(c.DefaultHeaders)
+		library, err := server.GetLibrary()
 		if err != nil {
 			logger.Errorf("Could not get metrics for server \"%s\"", server.Name)
 			logger.Debugf("Could not get library: %s", err)
@@ -121,7 +93,7 @@ func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
 			if err != nil {
 				logger.Debugf("Could not convert sections ID to int. (%s)", section.ID)
 			}
-			size, err := server.GetSectionSize(id, c.DefaultHeaders)
+			size, err := server.GetSectionSize(id)
 			if err != nil {
 				logger.Debugf("Could not get section size for \"%s\": %s", section.Name, err)
 				continue
@@ -139,44 +111,4 @@ func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
 	}
 
 	return serverMap
-}
-
-// GetPinRequest creates a PinRequest using the Plex API and returns it.
-func (c *PlexClient) GetPinRequest() (*api.PinRequest, error) {
-	_, body, err := SendRequest("POST", "https://plex.tv/pins", c.DefaultHeaders)
-	if err != nil {
-		return nil, err
-	}
-
-	container := &api.PinRequestContainer{}
-
-	err = json.Unmarshal(body, container)
-	if err != nil {
-		return nil, err
-	}
-
-	return &container.PinRequest, nil
-}
-
-// GetTokenFromPinRequest takes in a PinRequest and checks if it has been authenticated.
-// If it has been authenticated it returns the token.
-// If it has not been authenticated it returns an empty string.
-func (c *PlexClient) GetTokenFromPinRequest(p *api.PinRequest) (string, error) {
-	_, body, err := SendRequest("GET", fmt.Sprintf("https://plex.tv/pins/%d", p.Id), c.DefaultHeaders)
-	if err != nil {
-		return "", err
-	}
-
-	container := api.PinRequestContainer{}
-
-	err = json.Unmarshal(body, &container)
-	if err != nil {
-		return "", err
-	}
-
-	if container.PinRequest.AuthToken != "" {
-		c.Token = container.PinRequest.AuthToken
-	}
-
-	return c.Token, nil
 }

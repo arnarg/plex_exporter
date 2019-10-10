@@ -1,86 +1,100 @@
 package config
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 
-	"github.com/satori/go.uuid"
+	"github.com/urfave/cli"
+	"gopkg.in/yaml.v2"
 )
 
 type PlexConfig struct {
-	Token string `json:"token"`
-	UUID  string `json:"uuid"`
+	ListenAddress string             `yaml:"address" flag:"listen-address"`
+	LogLevel      string             `yaml:"logLevel" flag:"log-level"`
+	LogFormat     string             `yaml:"logFormat" flag:"format"`
+	AutoDiscover  bool               `yaml:"autoDiscover" flag:"auto-discover"`
+	Token         string             `yaml:"token" flag:"token"`
+	Servers       []PlexServerConfig `yaml:"servers"`
 }
 
-func Load(path string) (*PlexConfig, bool, error) {
-	var plexConfig *PlexConfig
+type PlexServerConfig struct {
+	BaseURL  string `yaml:"baseUrl"`
+	Token    string `yaml:"token"`
+	Insecure bool   `yaml:"insecure"`
+}
+
+func Load(c *cli.Context) (*PlexConfig, error) {
+	plexConfig := &PlexConfig{}
+	configPath := c.String("config-path")
 
 	// Get absolute path of config file
-	absPath, err := filepath.Abs(path)
+	absPath, err := filepath.Abs(configPath)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	// Check if the file already exists
 	_, err = os.Stat(absPath)
-	if err != nil {
-		// Config file doesn't exist so we generate new config
-		if os.IsNotExist(err) {
-			plexConfig = &PlexConfig{UUID: fmt.Sprintf("%s", uuid.NewV4())}
-			return plexConfig, true, nil
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	} else if err == nil {
+		// Read config file
+		yamlString, err := ioutil.ReadFile(absPath)
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, false, err
+		err = yaml.Unmarshal(yamlString, plexConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// Read config file
-	jsonString, err := ioutil.ReadFile(absPath)
-	if err != nil {
-		return nil, false, err
-	}
+	// Merge config with cli flags
+	MergeConfig(plexConfig, c)
 
-	// Parse JSON string
-	plexConfig = &PlexConfig{}
-	err = json.Unmarshal(jsonString, plexConfig)
-	if err != nil {
-		return nil, false, err
-	}
-
-	return plexConfig, false, nil
+	return plexConfig, nil
 }
 
-func Save(conf *PlexConfig, path string) error {
-	targetDir := filepath.Dir(path)
-	fileName := filepath.Base(path)
+func MergeConfig(conf *PlexConfig, c *cli.Context) {
+	// Overwrite config with flag values
+	confVal := reflect.Indirect(reflect.ValueOf(conf))
+	confElem := reflect.ValueOf(conf).Elem()
+	for i := 0; i < confVal.NumField(); i++ {
+		field := confVal.Type().Field(i)
+		fieldType := field.Type
+		flagName := field.Tag.Get("flag")
 
-	// Check if base directory exists
-	_, err := os.Stat(targetDir)
-	if err != nil {
-		// Attempt to create base directory
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(targetDir, 0750)
-			if err != nil {
-				return err
+		if fieldType.Kind() == reflect.String {
+			flagValue := c.String(flagName)
+			if flagValue != "" {
+				confElem.Field(i).SetString(flagValue)
 			}
 		}
 
-		return err
+		if fieldType.Kind() == reflect.Bool {
+			flagValue := c.Bool(flagName)
+			if flagValue {
+				confElem.Field(i).SetBool(flagValue)
+			}
+		}
 	}
 
-	// Create JSON string
-	jsonString, err := json.Marshal(&conf)
-	if err != nil {
-		return err
+	// Set main token to all servers without token
+	for i, server := range conf.Servers {
+		if server.Token == "" {
+			conf.Servers[i].Token = conf.Token
+		}
 	}
 
-	// Write to file
-	err = ioutil.WriteFile(filepath.Join(targetDir, fileName), jsonString, 0640)
-	if err != nil {
-		return err
+	// Append plex server from cli flag to list of servers
+	plexServer := c.String("plex-server")
+	if plexServer != "" && conf.Token != "" {
+		conf.Servers = append(conf.Servers, PlexServerConfig{
+			BaseURL: plexServer,
+			Token:   conf.Token,
+		})
 	}
-
-	return nil
 }

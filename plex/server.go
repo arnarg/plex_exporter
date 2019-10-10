@@ -1,123 +1,139 @@
 package plex
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"net/http"
+	"time"
 
+	"github.com/arnarg/plex_exporter/config"
 	"github.com/arnarg/plex_exporter/plex/api"
 	"github.com/imdario/mergo"
 )
 
 type Server struct {
-	ID          string
-	Name        string
-	Product     string
-	Version     string
-	Platform    string
-	AccessToken string
-	URL         string
+	ID         string
+	Name       string
+	Version    string
+	Platform   string
+	BaseURL    string
+	token      string
+	httpClient *http.Client
+	headers    map[string]string
 }
 
 const TestURI = "%s/identity"
+const ServerInfoURI = "%s/media/providers"
 const StatusURI = "%s/status/sessions"
 const LibraryURI = "%s/library/sections"
 const SectionURI = "%s/library/sections/%d/all"
 
-func NewServer(d *api.Device) (*Server, error) {
+func NewServer(c config.PlexServerConfig) (*Server, error) {
 	server := &Server{
-		ID:          d.ClientID,
-		Name:        d.Name,
-		Product:     d.Product,
-		Version:     d.Version,
-		Platform:    d.Platform,
-		AccessToken: d.AccessToken,
+		BaseURL: c.BaseURL,
+		token:   c.Token,
+		headers: headers,
+		httpClient: &http.Client{
+			Timeout: time.Second * 10,
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: c.Insecure},
+			},
+		},
+	}
+	server.headers["X-Plex-Token"] = c.Token
+
+	serverInfo, err := server.getServerInfo()
+	if err != nil {
+		return nil, err
 	}
 
-	// Pick a connection
-	// First one to respond gets picked
-	for _, conn := range d.Connections {
-		url := fmt.Sprintf(TestURI, conn.URI)
-		res, _, err := SendRequest("HEAD", url, map[string]string{})
-		if err != nil {
-			continue
-		}
-
-		if res.StatusCode == 200 {
-			server.URL = conn.URI
-			break
-		}
-	}
-
-	if server.URL == "" {
-		return nil, fmt.Errorf("Could not find a working connection for server \"%s\"", server.Name)
-	}
+	server.ID = serverInfo.ID
+	server.Name = serverInfo.Name
+	server.Version = serverInfo.Version
+	server.Platform = serverInfo.Platform
 
 	return server, nil
 }
 
-func (s *Server) GetSessionCount(h map[string]string) (int, error) {
-	sessionListWrapper := api.SessionListWrapper{}
+func (s *Server) getServerInfo() (*api.ServerInfoResponse, error) {
+	serverInfoResponse := api.ServerInfoResponse{}
 
-	url := fmt.Sprintf(StatusURI, s.URL)
-	_, body, err := SendRequest("GET", url, AddTokenHeader(h, s.AccessToken))
-	if err != nil {
-		return -1, err
-	}
-
-	err = json.Unmarshal(body, &sessionListWrapper)
-	if err != nil {
-		return -1, err
-	}
-
-	return sessionListWrapper.List.Size, nil
-}
-
-// GetLibrary returns server's library
-func (s *Server) GetLibrary(h map[string]string) (*api.Library, error) {
-	libraryWrapper := api.LibraryWrapper{}
-
-	url := fmt.Sprintf(LibraryURI, s.URL)
-	_, body, err := SendRequest("GET", url, AddTokenHeader(h, s.AccessToken))
+	body, err := s.get(fmt.Sprintf(ServerInfoURI, s.BaseURL))
 	if err != nil {
 		return nil, err
 	}
 
-	err = json.Unmarshal(body, &libraryWrapper)
+	err = json.Unmarshal(body, &serverInfoResponse)
 	if err != nil {
 		return nil, err
 	}
 
-	return &libraryWrapper.Library, err
+	return &serverInfoResponse, nil
 }
 
-// GetSectionSize returns the number of items in a library section with
-// given ID.
-func (s *Server) GetSectionSize(i int, h map[string]string) (int, error) {
-	// If certain headers are added to this request it returns the size of
-	// the library section as a header. Therefor we can just make a HEAD request.
+func (s *Server) GetSessionCount() (int, error) {
+	sessionList := api.SessionList{}
+
+	body, err := s.get(fmt.Sprintf(StatusURI, s.BaseURL))
+	if err != nil {
+		return -1, err
+	}
+
+	err = json.Unmarshal(body, &sessionList)
+	if err != nil {
+		return -1, err
+	}
+
+	return sessionList.Size, nil
+}
+
+func (s *Server) GetLibrary() (*api.LibraryResponse, error) {
+	libraryResponse := api.LibraryResponse{}
+
+	body, err := s.get(fmt.Sprintf(LibraryURI, s.BaseURL))
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(body, &libraryResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return &libraryResponse, nil
+}
+
+func (s *Server) GetSectionSize(id int) (int, error) {
+	// We don't want to get every item in the library section
+	// these headers make sure we only get metadata
 	eh := map[string]string{
 		"X-Plex-Container-Start": "0",
 		"X-Plex-Container-Size":  "0",
-		"X-Plex-Sync-Version":    "2",
 	}
-	mergo.Merge(&eh, h)
+	mergo.Merge(&eh, headers)
 
-	url := fmt.Sprintf(SectionURI, s.URL, i)
-	resp, _, err := SendRequest("HEAD", url, AddTokenHeader(eh, s.AccessToken))
+	sectionResponse := api.SectionResponse{}
+
+	_, body, err := sendRequest("GET", fmt.Sprintf(SectionURI, s.BaseURL, id), eh, s.httpClient)
 	if err != nil {
 		return -1, err
 	}
 
-	size, ok := resp.Header["X-Plex-Container-Total-Size"]
-	if !ok {
-		return -1, fmt.Errorf("Did not receive X-Plex-Container-Total-Size header")
+	err = json.Unmarshal(body, &sectionResponse)
+	if err != nil {
+		return -1, err
 	}
 
-	ret, err := strconv.Atoi(size[0])
-	if !ok {
-		return -1, fmt.Errorf("Could not parse size as int")
-	}
+	return sectionResponse.TotalSize, nil
+}
 
-	return ret, nil
+func (s *Server) get(url string) ([]byte, error) {
+	_, body, err := sendRequest("GET", url, s.headers, s.httpClient)
+	return body, err
+}
+
+func (s *Server) head(url string) (*http.Response, error) {
+	resp, _, err := sendRequest("HEAD", url, s.headers, s.httpClient)
+	return resp, err
 }
