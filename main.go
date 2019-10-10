@@ -117,7 +117,7 @@ func main() {
 		cli.StringFlag{
 			Name:  "config-path, c",
 			Value: "/etc/plex_exporter/config.yaml",
-			Usage: "Path to persistent authentication token",
+			Usage: "Path config file",
 		},
 		cli.StringFlag{
 			Name:  "listen-address, l",
