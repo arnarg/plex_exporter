@@ -60,9 +60,6 @@ func Run(c *cli.Context) error {
 	clientLogger := log.WithFields(log.Fields{"context": "client"})
 	client, err := plex.NewPlexClient(conf, clientLogger)
 	if err != nil {
-		if err.Error() == "url or a token is required" {
-			return fmt.Errorf("Could not get a token from config or parameter.")
-		}
 		return err
 	}
 
@@ -136,6 +133,10 @@ func main() {
 			Name:  "format, f",
 			Value: "text",
 			Usage: "Output format of logs",
+		},
+		cli.BoolFlag{
+			Name:  "auto-discover, a",
+			Usage: "Auto discover Plex servers from plex.tv",
 		},
 		cli.StringFlag{
 			Name:  "plex-server, p",

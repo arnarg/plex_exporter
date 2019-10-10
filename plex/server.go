@@ -43,11 +43,6 @@ func NewServer(c config.PlexServerConfig) (*Server, error) {
 	}
 	server.headers["X-Plex-Token"] = c.Token
 
-	err := server.Test()
-	if err != nil {
-		return nil, err
-	}
-
 	serverInfo, err := server.getServerInfo()
 	if err != nil {
 		return nil, err
@@ -131,18 +126,6 @@ func (s *Server) GetSectionSize(id int) (int, error) {
 	}
 
 	return sectionResponse.TotalSize, nil
-}
-
-func (s *Server) Test() error {
-	resp, err := s.head(fmt.Sprintf(TestURI, s.BaseURL))
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("Server not working", s.BaseURL)
-	}
-	return nil
 }
 
 func (s *Server) get(url string) ([]byte, error) {

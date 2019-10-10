@@ -23,13 +23,15 @@ var headers = map[string]string{
 
 type PlexClient struct {
 	Logger  *log.Entry
-	Headers map[string]string
 	Servers []*Server
-	token   string
+	headers map[string]string
 }
 
 func NewPlexClient(c *config.PlexConfig, l *log.Entry) (*PlexClient, error) {
 	var serverList []*Server
+
+	h := headers
+	h["X-Plex-Token"] = c.Token
 
 	for _, serverConf := range c.Servers {
 		plexServer, err := NewServer(serverConf)
@@ -40,11 +42,17 @@ func NewPlexClient(c *config.PlexConfig, l *log.Entry) (*PlexClient, error) {
 		}
 	}
 
+	if c.AutoDiscover {
+		discoveryList, err := discoverServers(h)
+		if err == nil {
+			serverList = append(serverList, discoveryList...)
+		}
+	}
+
 	return &PlexClient{
 		Logger:  l,
-		token:   c.Token,
 		Servers: serverList,
-		Headers: headers,
+		headers: h,
 	}, nil
 }
 

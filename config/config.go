@@ -14,6 +14,7 @@ type PlexConfig struct {
 	ListenAddress string             `yaml:"address" flag:"listen-address"`
 	LogLevel      string             `yaml:"logLevel" flag:"log-level"`
 	LogFormat     string             `yaml:"logFormat" flag:"format"`
+	AutoDiscover  bool               `yaml:"autoDiscover" flag:"auto-discover"`
 	Token         string             `yaml:"token" flag:"token"`
 	Servers       []PlexServerConfig `yaml:"servers"`
 }
@@ -62,11 +63,22 @@ func MergeConfig(conf *PlexConfig, c *cli.Context) {
 	confVal := reflect.Indirect(reflect.ValueOf(conf))
 	confElem := reflect.ValueOf(conf).Elem()
 	for i := 0; i < confVal.NumField(); i++ {
-		fieldType := confVal.Type().Field(i)
-		flagName := fieldType.Tag.Get("flag")
-		flagValue := c.String(flagName)
-		if flagValue != "" {
-			confElem.Field(i).SetString(flagValue)
+		field := confVal.Type().Field(i)
+		fieldType := field.Type
+		flagName := field.Tag.Get("flag")
+
+		if fieldType.Kind() == reflect.String {
+			flagValue := c.String(flagName)
+			if flagValue != "" {
+				confElem.Field(i).SetString(flagValue)
+			}
+		}
+
+		if fieldType.Kind() == reflect.Bool {
+			flagValue := c.Bool(flagName)
+			if flagValue {
+				confElem.Field(i).SetBool(flagValue)
+			}
 		}
 	}
 

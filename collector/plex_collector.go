@@ -20,7 +20,7 @@ func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 		client: c,
 		serverInfo: prometheus.NewDesc("plex_server_info",
 			"Information about Plex server",
-			[]string{"server_name", "server_id", "version"}, nil,
+			[]string{"server_name", "server_id", "version", "platform"}, nil,
 		),
 		sessionsMetric: prometheus.NewDesc("plex_sessions_active_count",
 			"Number of active Plex sessions",
@@ -44,7 +44,7 @@ func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, v := range serverMetrics {
 		c.Logger.Trace(v)
-		ch <- prometheus.MustNewConstMetric(c.serverInfo, prometheus.CounterValue, 1, v.Name, v.ID, v.Version)
+		ch <- prometheus.MustNewConstMetric(c.serverInfo, prometheus.CounterValue, 1, v.Name, v.ID, v.Version, v.Platform)
 		ch <- prometheus.MustNewConstMetric(c.sessionsMetric, prometheus.GaugeValue, float64(v.ActiveSessions), v.Name, v.ID)
 
 		for _, l := range v.Libraries {
