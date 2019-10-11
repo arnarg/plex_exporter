@@ -1,0 +1,42 @@
+builds:
+- env:
+  - CGO_ENABLED=0
+  ldflags:
+  - -s -w -X github.com/arnarg/plex_exporter/version.Version={{.Version}}
+  goos:
+  - linux
+  - darwin
+  - windows
+  goarch:
+  - amd64
+  - arm
+  - arm64
+  goarm:
+  - 6
+  - 7
+  ignore:
+  - goos: darwin
+    goarch: arm
+  - goos: darwin
+    goarch: arm64
+  - goos: windows
+    goarch: arm
+  - goos: windows
+    goarch: arm64
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+archives:
+  - id: bin
+    format: binary
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
