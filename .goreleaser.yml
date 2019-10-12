@@ -12,7 +12,6 @@ builds:
   - arm
   - arm64
   goarm:
-  - 6
   - 7
   ignore:
   - goos: darwin
@@ -23,6 +22,35 @@ builds:
     goarch: arm
   - goos: windows
     goarch: arm64
+
+dockers:
+- goos: linux
+  goarch: amd64
+  binaries:
+  - plex_exporter
+  image_templates:
+  - granra/plex_exporter:amd64
+  skip_push: false
+  dockerfile: docker/Dockerfile.release
+
+- goos: linux
+  goarch: arm
+  goarm: 7
+  binaries:
+  - plex_exporter
+  image_templates:
+  - granra/plex_exporter:arm
+  skip_push: false
+  dockerfile: docker/Dockerfile.release
+
+- goos: linux
+  goarch: arm64
+  binaries:
+  - plex_exporter
+  image_templates:
+  - granra/plex_exporter:arm64
+  skip_push: false
+  dockerfile: docker/Dockerfile.release
 
 before:
   hooks:

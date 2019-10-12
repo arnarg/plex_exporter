@@ -1,0 +1,5 @@
+FROM gcr.io/distroless/static
+
+COPY plex_exporter /usr/bin/plex_exporter
+
+ENTRYPOINT [ "/usr/bin/plex_exporter" ]

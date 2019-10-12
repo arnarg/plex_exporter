@@ -1,11 +1,9 @@
-name: goreleaser
+name: release
 
-on:
-  pull_request:
-  push:
+on: release
 
 jobs:
-  goreleaser:
+  release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -16,6 +14,12 @@ jobs:
         with:
           go-version: 1.13.x
 
+      - name: Docker login
+        uses: azure/docker-login@v1
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v1
         with:
@@ -23,3 +27,30 @@ jobs:
           args: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare manifest-tool config
+        run: |
+          VERSION=$(git describe --dirty --always)
+          cat <<EOF > plex_exporter_manifest.yml
+          image: granra/plex_exporter:${VERSION}
+          tags: [ 'latest' ]
+          manifests:
+          - image: granra/plex_exporter:amd64
+            platform:
+              architecture: amd64
+              os: linux
+          - image: granra/plex_exporter:arm
+            platform:
+              architecture: arm
+              os: linux
+          - image: granra/plex_exporter:arm64
+            platform:
+              architecture: arm64
+              os: linux
+          EOF
+          cat plex_exporter_manifest.yml
+
+      - name: Docker push
+        uses: docker://mplatform/manifest-tool:v1.0.0
+        with:
+          args: --username ${{ secrets.DOCKER_USER }} --password ${{ secrets.DOCKER_PASS }} push from-spec plex_exporter_manifest.yml
