@@ -115,36 +115,43 @@ func main() {
 
 	flags := []cli.Flag{
 		cli.StringFlag{
-			Name:  "config-path, c",
-			Value: "/etc/plex_exporter/config.yaml",
-			Usage: "Path config file",
+			Name:   "config-path, c",
+			Value:  "/etc/plex_exporter/config.yaml",
+			Usage:  "Path config file",
+			EnvVar: "PLEX_CONFIG_PATH,CONFIG_PATH",
 		},
 		cli.StringFlag{
-			Name:  "listen-address, l",
-			Value: ":9594",
-			Usage: "Port for server",
+			Name:   "listen-address, l",
+			Value:  ":9594",
+			Usage:  "Port for server",
+			EnvVar: "PLEX_LISTEN_ADDR,LISTEN_ADDR,ADDR",
 		},
 		cli.StringFlag{
-			Name:  "log-level",
-			Value: "info",
-			Usage: "Verbosity level of logs",
+			Name:   "log-level",
+			Value:  "info",
+			Usage:  "Verbosity level of logs",
+			EnvVar: "PLEX_LOG_LEVEL,LOG_LEVEL",
 		},
 		cli.StringFlag{
-			Name:  "format, f",
-			Value: "text",
-			Usage: "Output format of logs",
+			Name:   "format, f",
+			Value:  "text",
+			Usage:  "Output format of logs",
+			EnvVar: "PLEX_LOG_FORMAT,LOG_FORMAT",
 		},
 		cli.BoolFlag{
-			Name:  "auto-discover, a",
-			Usage: "Auto discover Plex servers from plex.tv",
+			Name:   "auto-discover, a",
+			Usage:  "Auto discover Plex servers from plex.tv",
+			EnvVar: "PLEX_AUTO_DISCOVER,AUTO_DISCOVER",
 		},
 		cli.StringFlag{
-			Name:  "plex-server, p",
-			Usage: "Address of Plex Media Server",
+			Name:   "plex-server, p",
+			Usage:  "Address of Plex Media Server",
+			EnvVar: "PLEX_SERVER",
 		},
 		cli.StringFlag{
-			Name:  "token, t",
-			Usage: "Authentication token for Plex Media Server",
+			Name:   "token, t",
+			Usage:  "Authentication token for Plex Media Server",
+			EnvVar: "PLEX_TOKEN,TOKEN",
 		},
 	}
 
