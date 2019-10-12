@@ -49,6 +49,8 @@ func NewPlexClient(c *config.PlexConfig, l *log.Entry) (*PlexClient, error) {
 		}
 	}
 
+	l.Infof("Found %d working servers", len(serverList))
+
 	return &PlexClient{
 		Logger:  l,
 		Servers: serverList,
