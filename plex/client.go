@@ -5,9 +5,9 @@ import (
 	"runtime"
 	"strconv"
 
-	"github.com/arnarg/plex_exporter/config"
-	v "github.com/arnarg/plex_exporter/version"
 	log "github.com/sirupsen/logrus"
+	"github.com/tagnard/plex_exporter/config"
+	v "github.com/tagnard/plex_exporter/version"
 )
 
 var headers = map[string]string{
@@ -74,13 +74,27 @@ func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
 		}
 
 		// Get active sessions
-		activeSessions, err := server.GetSessionCount()
+		currentSessions, err := server.GetSessions()
 		if err != nil {
 			logger.Errorf("Could not get metrics for server \"%s\"", server.Name)
 			logger.Debugf("Could not get session count: %s", err)
 			continue
 		}
-		serverMetric.ActiveSessions = activeSessions
+
+		for _, session := range currentSessions {
+			sessionMetric := SessionMetric{
+				Username: session.User.Username,
+				Library:  session.Library,
+				State:    session.Player.State,
+			}
+
+			if session.Type == "movie" {
+				sessionMetric.Title = session.Title
+			} else if session.Type == "episode" {
+				sessionMetric.Title = fmt.Sprintf("%v - %v", session.Series, session.Title)
+			}
+			serverMetric.Sessions = append(serverMetric.Sessions, sessionMetric)
+		}
 
 		// Get library metrics
 		library, err := server.GetLibrary()

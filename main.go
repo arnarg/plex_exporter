@@ -6,13 +6,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/arnarg/plex_exporter/collector"
-	"github.com/arnarg/plex_exporter/config"
-	"github.com/arnarg/plex_exporter/plex"
-	"github.com/arnarg/plex_exporter/version"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+	"github.com/tagnard/plex_exporter/collector"
+	"github.com/tagnard/plex_exporter/config"
+	"github.com/tagnard/plex_exporter/plex"
+	"github.com/tagnard/plex_exporter/version"
 	"github.com/urfave/cli"
 )
 

@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/arnarg/plex_exporter/config"
-	"github.com/arnarg/plex_exporter/plex/api"
 	"github.com/imdario/mergo"
+	"github.com/tagnard/plex_exporter/config"
+	"github.com/tagnard/plex_exporter/plex/api"
 )
 
 type Server struct {
@@ -72,20 +72,20 @@ func (s *Server) getServerInfo() (*api.ServerInfoResponse, error) {
 	return &serverInfoResponse, nil
 }
 
-func (s *Server) GetSessionCount() (int, error) {
+func (s *Server) GetSessions() ([]api.Metadata, error) {
 	sessionList := api.SessionList{}
 
 	body, err := s.get(fmt.Sprintf(StatusURI, s.BaseURL))
 	if err != nil {
-		return -1, err
+		return []api.Metadata{}, err
 	}
 
 	err = json.Unmarshal(body, &sessionList)
 	if err != nil {
-		return -1, err
+		return []api.Metadata{}, err
 	}
 
-	return sessionList.Size, nil
+	return sessionList.Metadata, nil
 }
 
 func (s *Server) GetLibrary() (*api.LibraryResponse, error) {
