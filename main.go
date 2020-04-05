@@ -69,12 +69,12 @@ func Run(c *cli.Context) error {
 		}
 	}
 
-	// if conf.AutoDiscover {
-	// 	discoveryList, err := plex.DiscoverServers(h)
-	// 	if err == nil {
-	// 		serverList = append(serverList, discoveryList...)
-	// 	}
-	// }
+	if conf.AutoDiscover {
+		discoveryList, err := plex.DiscoverServers(conf.Token)
+		if err == nil {
+			serverList = append(serverList, discoveryList...)
+		}
+	}
 
 	l.Infof("Found %d working servers", len(serverList))
 

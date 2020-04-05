@@ -25,14 +25,16 @@ type Pin struct {
 	AuthToken string    `json:"auth_token"`
 }
 
-func DiscoverServers(h map[string]string) ([]*Server, error) {
+func DiscoverServers(token string) ([]*Server, error) {
+	h := headers
 	httpClient := &http.Client{Timeout: time.Second * 10}
 	// This endpoint only supports XML.
 	// I want to specify the "Accept: application/xml" header
 	// to make sure that if the endpoint does support JSON in
 	// the future it won't break the application.
 	eh := map[string]string{
-		"Accept": "application/xml",
+		"Accept":       "application/xml",
+		"X-Plex-Token": token,
 	}
 	mergo.Merge(&eh, h)
 
