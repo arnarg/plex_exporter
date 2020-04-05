@@ -27,7 +27,7 @@ func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 				Name:      "info",
 				Help:      "Information about Plex server",
 			},
-			[]string{"server_name", "server_id", "version", "platform"},
+			[]string{"version", "platform"},
 		),
 		sessionsMetric: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -36,7 +36,7 @@ func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 				Name:      "active_count",
 				Help:      "Number of active Plex sessions",
 			},
-			[]string{"server_name", "server_id"},
+			[]string{},
 		),
 		libraryMetric: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
@@ -45,7 +45,7 @@ func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 				Name:      "section_size_count",
 				Help:      "Number of items in a library section",
 			},
-			[]string{"server_name", "server_id", "name", "type"},
+			[]string{"name", "type"},
 		),
 	}
 }
@@ -58,11 +58,11 @@ func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
 	v := c.client.GetServerMetrics()
 
 	c.Logger.Trace(v)
-	c.serverInfo.WithLabelValues(v.Name, v.ID, v.Version, v.Platform).Set(1)
-	c.sessionsMetric.WithLabelValues(v.Name, v.ID).Set(float64(v.ActiveSessions))
+	c.serverInfo.WithLabelValues(v.Version, v.Platform).Set(1)
+	c.sessionsMetric.WithLabelValues().Set(float64(v.ActiveSessions))
 
 	for _, l := range v.Libraries {
-		c.libraryMetric.WithLabelValues(v.Name, v.ID, l.Name, l.Type).Set(float64(l.Size))
+		c.libraryMetric.WithLabelValues(l.Name, l.Type).Set(float64(l.Size))
 	}
 
 	c.serverInfo.Collect(ch)

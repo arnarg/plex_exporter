@@ -38,8 +38,6 @@ func (c *PlexClient) GetServerMetrics() ServerMetric {
 	logger := c.Logger.WithFields(log.Fields{"server": c.server.Name})
 
 	serverMetric := ServerMetric{
-		ID:       c.server.ID,
-		Name:     c.server.Name,
 		Version:  c.server.Version,
 		Platform: c.server.Platform,
 	}

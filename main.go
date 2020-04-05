@@ -78,23 +78,32 @@ func Run(c *cli.Context) error {
 
 	l.Infof("Found %d working servers", len(serverList))
 
+	reg := prometheus.NewPedanticRegistry()
+
 	for _, server := range serverList {
 		// Create a Plex client
 		clientLogger := log.WithFields(log.Fields{"context": "client", "server": server.Name})
 		client, err := plex.NewPlexClient(server, clientLogger)
 
 		// Create the Prometheus collector
-		collectorLogger := log.WithFields(log.Fields{"context": "collector"})
+		collectorLogger := log.WithFields(log.Fields{"context": "collector", "server": server.Name})
 		pc := collector.NewPlexCollector(client, collectorLogger)
-		prometheus.MustRegister(pc)
+		prometheus.WrapRegistererWith(
+			prometheus.Labels{"server_name": server.Name, "server_id": server.ID}, reg,
+		).MustRegister(pc)
 
 		if err != nil {
 			return err
 		}
 	}
 
+	reg.MustRegister(
+		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
+		prometheus.NewGoCollector(),
+	)
+
 	// Start HTTP server
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
 	log.Infof("Beginning to serve on port %s", conf.ListenAddress)
 	log.Fatal(http.ListenAndServe(conf.ListenAddress, nil))
 	return nil
