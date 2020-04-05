@@ -51,7 +51,9 @@ func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 }
 
 func (c *PlexCollector) Describe(ch chan<- *prometheus.Desc) {
-	prometheus.DescribeByCollect(c, ch)
+	c.serverInfo.Describe(ch)
+	c.sessionsMetric.Describe(ch)
+	c.libraryMetric.Describe(ch)
 }
 
 func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
