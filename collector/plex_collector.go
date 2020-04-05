@@ -55,7 +55,11 @@ func (c *PlexCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
-	v := c.client.GetServerMetrics()
+	v, err := c.client.GetServerMetrics()
+	if err != nil {
+		c.Logger.Errorf("Could not retrieve server metrics: %s", err)
+		return
+	}
 
 	c.Logger.Trace(v)
 	c.serverInfo.WithLabelValues(v.Version, v.Platform).Set(1)

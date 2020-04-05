@@ -20,7 +20,7 @@ func NewPlexClient(s *Server, l *log.Entry) (*PlexClient, error) {
 
 // GetServerMetrics fetches all metrics for each server and returns them in a map
 // with the servers' names as keys.
-func (c *PlexClient) GetServerMetrics() ServerMetric {
+func (c *PlexClient) GetServerMetrics() (ServerMetric, error) {
 	logger := c.Logger.WithFields(log.Fields{"server": c.server.Name})
 
 	serverMetric := ServerMetric{
@@ -31,19 +31,16 @@ func (c *PlexClient) GetServerMetrics() ServerMetric {
 	// Get active sessions
 	activeSessions, err := c.server.GetSessionCount()
 	if err != nil {
-		logger.Errorf("Could not get metrics")
 		logger.Debugf("Could not get session count: %s", err)
-		// TODO fix
-		return serverMetric
+		return serverMetric, err
 	}
 	serverMetric.ActiveSessions = activeSessions
 
 	// Get library metrics
 	library, err := c.server.GetLibrary()
 	if err != nil {
-		logger.Errorf("Could not get metrics")
 		logger.Debugf("Could not get library: %s", err)
-		return serverMetric
+		return serverMetric, err
 	}
 
 	for _, section := range library.Sections {
@@ -54,7 +51,7 @@ func (c *PlexClient) GetServerMetrics() ServerMetric {
 		size, err := c.server.GetSectionSize(id)
 		if err != nil {
 			logger.Debugf("Could not get section size for \"%s\": %s", section.Name, err)
-			return serverMetric
+			return serverMetric, err
 		}
 		libraryMetric := LibraryMetric{
 			Name: section.Name,
@@ -65,5 +62,5 @@ func (c *PlexClient) GetServerMetrics() ServerMetric {
 		serverMetric.Libraries = append(serverMetric.Libraries, libraryMetric)
 	}
 
-	return serverMetric
+	return serverMetric, nil
 }
