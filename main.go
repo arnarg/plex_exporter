@@ -56,17 +56,42 @@ func Run(c *cli.Context) error {
 		return err
 	}
 
-	// Create a Plex client
-	clientLogger := log.WithFields(log.Fields{"context": "client"})
-	client, err := plex.NewPlexClient(conf, clientLogger)
-	if err != nil {
-		return err
+	var serverList []*plex.Server
+
+	l := log.New()
+
+	for _, serverConf := range conf.Servers {
+		plexServer, err := plex.NewServer(serverConf)
+		if err != nil {
+			log.WithFields(log.Fields{"BaseURL": serverConf.BaseURL}).Errorf("Could not add server: %s", err)
+		} else {
+			serverList = append(serverList, plexServer)
+		}
 	}
 
-	// Create the Prometheus collector
-	collectorLogger := log.WithFields(log.Fields{"context": "collector"})
-	pc := collector.NewPlexCollector(client, collectorLogger)
-	prometheus.MustRegister(pc)
+	// if conf.AutoDiscover {
+	// 	discoveryList, err := plex.DiscoverServers(h)
+	// 	if err == nil {
+	// 		serverList = append(serverList, discoveryList...)
+	// 	}
+	// }
+
+	l.Infof("Found %d working servers", len(serverList))
+
+	for _, server := range serverList {
+		// Create a Plex client
+		clientLogger := log.WithFields(log.Fields{"context": "client", "server": server.Name})
+		client, err := plex.NewPlexClient(server, clientLogger)
+
+		// Create the Prometheus collector
+		collectorLogger := log.WithFields(log.Fields{"context": "collector"})
+		pc := collector.NewPlexCollector(client, collectorLogger)
+		prometheus.MustRegister(pc)
+
+		if err != nil {
+			return err
+		}
+	}
 
 	// Start HTTP server
 	http.Handle("/metrics", promhttp.Handler())

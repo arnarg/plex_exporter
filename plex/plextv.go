@@ -25,7 +25,7 @@ type Pin struct {
 	AuthToken string    `json:"auth_token"`
 }
 
-func discoverServers(h map[string]string) ([]*Server, error) {
+func DiscoverServers(h map[string]string) ([]*Server, error) {
 	httpClient := &http.Client{Timeout: time.Second * 10}
 	// This endpoint only supports XML.
 	// I want to specify the "Accept: application/xml" header

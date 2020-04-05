@@ -55,16 +55,14 @@ func (c *PlexCollector) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
-	serverMetrics := c.client.GetServerMetrics()
+	v := c.client.GetServerMetrics()
 
-	for _, v := range serverMetrics {
-		c.Logger.Trace(v)
-		c.serverInfo.WithLabelValues(v.Name, v.ID, v.Version, v.Platform).Set(1)
-		c.sessionsMetric.WithLabelValues(v.Name, v.ID).Set(float64(v.ActiveSessions))
+	c.Logger.Trace(v)
+	c.serverInfo.WithLabelValues(v.Name, v.ID, v.Version, v.Platform).Set(1)
+	c.sessionsMetric.WithLabelValues(v.Name, v.ID).Set(float64(v.ActiveSessions))
 
-		for _, l := range v.Libraries {
-			c.libraryMetric.WithLabelValues(v.Name, v.ID, l.Name, l.Type).Set(float64(l.Size))
-		}
+	for _, l := range v.Libraries {
+		c.libraryMetric.WithLabelValues(v.Name, v.ID, l.Name, l.Type).Set(float64(l.Size))
 	}
 
 	c.serverInfo.Collect(ch)
