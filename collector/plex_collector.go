@@ -7,36 +7,51 @@ import (
 )
 
 type PlexCollector struct {
-	Logger         *log.Entry
-	client         *plex.PlexClient
-	serverInfo     *prometheus.Desc
-	sessionsMetric *prometheus.Desc
-	libraryMetric  *prometheus.Desc
+	Logger *log.Entry
+	client *plex.PlexClient
+
+	serverInfo     *prometheus.GaugeVec
+	sessionsMetric *prometheus.GaugeVec
+	libraryMetric  *prometheus.GaugeVec
 }
 
 func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 	return &PlexCollector{
 		Logger: l,
 		client: c,
-		serverInfo: prometheus.NewDesc("plex_server_info",
-			"Information about Plex server",
-			[]string{"server_name", "server_id", "version", "platform"}, nil,
+
+		serverInfo: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "plex",
+				Subsystem: "server",
+				Name:      "info",
+				Help:      "Information about Plex server",
+			},
+			[]string{"server_name", "server_id", "version", "platform"},
 		),
-		sessionsMetric: prometheus.NewDesc("plex_sessions_active_count",
-			"Number of active Plex sessions",
-			[]string{"server_name", "server_id"}, nil,
+		sessionsMetric: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "plex",
+				Subsystem: "sessions",
+				Name:      "active_count",
+				Help:      "Number of active Plex sessions",
+			},
+			[]string{"server_name", "server_id"},
 		),
-		libraryMetric: prometheus.NewDesc("plex_library_section_size_count",
-			"Number of items in a library section",
-			[]string{"server_name", "server_id", "name", "type"}, nil,
+		libraryMetric: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "plex",
+				Subsystem: "library",
+				Name:      "section_size_count",
+				Help:      "Number of items in a library section",
+			},
+			[]string{"server_name", "server_id", "name", "type"},
 		),
 	}
 }
 
 func (c *PlexCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- c.serverInfo
-	ch <- c.sessionsMetric
-	ch <- c.libraryMetric
+	prometheus.DescribeByCollect(c, ch)
 }
 
 func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
@@ -44,11 +59,15 @@ func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
 
 	for _, v := range serverMetrics {
 		c.Logger.Trace(v)
-		ch <- prometheus.MustNewConstMetric(c.serverInfo, prometheus.CounterValue, 1, v.Name, v.ID, v.Version, v.Platform)
-		ch <- prometheus.MustNewConstMetric(c.sessionsMetric, prometheus.GaugeValue, float64(v.ActiveSessions), v.Name, v.ID)
+		c.serverInfo.WithLabelValues(v.Name, v.ID, v.Version, v.Platform).Set(1)
+		c.sessionsMetric.WithLabelValues(v.Name, v.ID).Set(float64(v.ActiveSessions))
 
 		for _, l := range v.Libraries {
-			ch <- prometheus.MustNewConstMetric(c.libraryMetric, prometheus.GaugeValue, float64(l.Size), v.Name, v.ID, l.Name, l.Type)
+			c.libraryMetric.WithLabelValues(v.Name, v.ID, l.Name, l.Type).Set(float64(l.Size))
 		}
 	}
+
+	c.serverInfo.Collect(ch)
+	c.sessionsMetric.Collect(ch)
+	c.libraryMetric.Collect(ch)
 }
