@@ -22,3 +22,18 @@ type SectionResponse struct {
 type SectionDetail struct {
 	TotalSize int `json:"totalSize"`
 }
+
+type ShowSectionResponse struct {
+	ShowSectionDetail `json:"MediaContainer"`
+}
+
+type ShowSectionDetail struct {
+	ShowCount   int               `json:"size"`
+	Directories []DirectoryDetail `json:"Directory"`
+}
+
+type DirectoryDetail struct {
+	EpisodeCount        int `json:"leafCount"`
+	WatchedEpisodeCount int `json:"watchedLeafCount"`
+	SeasonCount         int `json:"childCount"`
+}

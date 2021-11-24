@@ -128,6 +128,29 @@ func (s *Server) GetSectionSize(id int) (int, error) {
 	return sectionResponse.TotalSize, nil
 }
 
+func (s *Server) GetShowSectionSize(id int) (int, int, int, int, error) {
+
+	sectionResponse := api.ShowSectionResponse{}
+
+	_, body, err := sendRequest("GET", fmt.Sprintf(SectionURI, s.BaseURL, id), headers, s.httpClient)
+	if err != nil {
+		return -1, -1, -1, -1, err
+	}
+
+	err = json.Unmarshal(body, &sectionResponse)
+	if err != nil {
+		return -1, -1, -1, -1, err
+	}
+	seasonCount, episodeCount, watchedEpisodeCount := 0, 0, 0
+	for _, directory := range sectionResponse.Directories {
+		seasonCount += directory.SeasonCount
+		episodeCount += directory.EpisodeCount
+		watchedEpisodeCount += directory.WatchedEpisodeCount
+	}
+
+	return sectionResponse.ShowCount, seasonCount, episodeCount, watchedEpisodeCount, nil
+}
+
 func (s *Server) get(url string) ([]byte, error) {
 	_, body, err := sendRequest("GET", url, s.headers, s.httpClient)
 	return body, err
