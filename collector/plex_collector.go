@@ -75,6 +75,7 @@ func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
 			ch <- prometheus.MustNewConstMetric(c.libraryMetric, prometheus.GaugeValue, float64(l.Size), v.Name, v.ID, l.Name, l.Type)
 		}
 		for _, s := range v.ShowLibraries {
+			ch <- prometheus.MustNewConstMetric(c.libraryMetric, prometheus.GaugeValue, float64(s.ShowSize), v.Name, v.ID, s.Name, s.Type)
 			ch <- prometheus.MustNewConstMetric(c.showLibraryMetric, prometheus.GaugeValue, float64(s.ShowSize), v.Name, v.ID, s.Name)
 			ch <- prometheus.MustNewConstMetric(c.showLibrarySeasonMetric, prometheus.GaugeValue, float64(s.SeasonSize), v.Name, v.ID, s.Name)
 			ch <- prometheus.MustNewConstMetric(c.showLibraryEpisodeMetric, prometheus.GaugeValue, float64(s.EpisodeSize), v.Name, v.ID, s.Name)
