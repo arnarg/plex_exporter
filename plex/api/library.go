@@ -28,12 +28,12 @@ type ShowSectionResponse struct {
 }
 
 type ShowSectionDetail struct {
-	ShowCount   int               `json:"size"`
-	Directories []DirectoryDetail `json:"Directory"`
+	ShowCount int          `json:"size"`
+	Shows     []ShowDetail `json:"MetaData"`
 }
 
-type DirectoryDetail struct {
+type ShowDetail struct {
 	EpisodeCount        int `json:"leafCount"`
-	WatchedEpisodeCount int `json:"watchedLeafCount"`
+	WatchedEpisodeCount int `json:"viewedLeafCount"`
 	SeasonCount         int `json:"childCount"`
 }
