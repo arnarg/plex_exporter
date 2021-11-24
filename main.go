@@ -73,7 +73,17 @@ func Run(c *cli.Context) error {
 	//create health check
 	healhCheck := health.NewChecker(
 		health.WithCheck(health.Check{
-			Name:    "plex",
+			Name:    "client",
+			Timeout: 2 * time.Second,
+			Check: func(ctx context.Context) error {
+				if len(client.Servers) > 0 {
+					return nil
+				}
+				return fmt.Errorf("No servers found")
+			},
+		}),
+		health.WithCheck(health.Check{
+			Name:    "servers",
 			Timeout: 2 * time.Second,
 			Check: func(ctx context.Context) error {
 				for _, server := range client.Servers {
