@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -72,17 +73,18 @@ func Run(c *cli.Context) error {
 	//create health check
 	healhCheck := health.NewChecker(
 		health.WithCheck(health.Check{
-			Name: "plex",
+			Name:    "plex",
 			Timeout: 2 * time.Second,
-			Check: func() {
-				for _, server := client.Servers {
-					_, err := server.getServerInfo()
+			Check: func(ctx context.Context) error {
+				for _, server := range client.Servers {
+					_, err := server.GetServerInfo()
 					if err != nil {
 						return err
 					}
 				}
+				return nil
 			},
-		})
+		}),
 	)
 
 	// Start HTTP server
