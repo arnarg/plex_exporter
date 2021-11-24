@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/alexliesenfeld/health"
 	"github.com/arnarg/plex_exporter/collector"
 	"github.com/arnarg/plex_exporter/config"
 	"github.com/arnarg/plex_exporter/plex"
@@ -68,8 +70,36 @@ func Run(c *cli.Context) error {
 	pc := collector.NewPlexCollector(client, collectorLogger)
 	prometheus.MustRegister(pc)
 
+	//create health check
+	healhCheck := health.NewChecker(
+		health.WithCheck(health.Check{
+			Name:    "client",
+			Timeout: 2 * time.Second,
+			Check: func(ctx context.Context) error {
+				if len(client.Servers) > 0 {
+					return nil
+				}
+				return fmt.Errorf("No servers found")
+			},
+		}),
+		health.WithCheck(health.Check{
+			Name:    "servers",
+			Timeout: 2 * time.Second,
+			Check: func(ctx context.Context) error {
+				for _, server := range client.Servers {
+					_, err := server.GetServerInfo()
+					if err != nil {
+						return err
+					}
+				}
+				return nil
+			},
+		}),
+	)
+
 	// Start HTTP server
 	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/health", health.NewHandler(healhCheck))
 	log.Infof("Beginning to serve on port %s", conf.ListenAddress)
 	log.Fatal(http.ListenAndServe(conf.ListenAddress, nil))
 	return nil

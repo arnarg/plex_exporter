@@ -43,7 +43,7 @@ func NewServer(c config.PlexServerConfig) (*Server, error) {
 	}
 	server.headers["X-Plex-Token"] = c.Token
 
-	serverInfo, err := server.getServerInfo()
+	serverInfo, err := server.GetServerInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func NewServer(c config.PlexServerConfig) (*Server, error) {
 	return server, nil
 }
 
-func (s *Server) getServerInfo() (*api.ServerInfoResponse, error) {
+func (s *Server) GetServerInfo() (*api.ServerInfoResponse, error) {
 	serverInfoResponse := api.ServerInfoResponse{}
 
 	body, err := s.get(fmt.Sprintf(ServerInfoURI, s.BaseURL))
