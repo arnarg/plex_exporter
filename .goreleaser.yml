@@ -26,7 +26,7 @@ builds:
 dockers:
 - goos: linux
   goarch: amd64
-  binaries:
+  ids:
   - plex_exporter
   image_templates:
   - granra/plex_exporter:amd64
@@ -36,7 +36,7 @@ dockers:
 - goos: linux
   goarch: arm
   goarm: 7
-  binaries:
+  ids:
   - plex_exporter
   image_templates:
   - granra/plex_exporter:arm
@@ -45,7 +45,7 @@ dockers:
 
 - goos: linux
   goarch: arm64
-  binaries:
+  ids:
   - plex_exporter
   image_templates:
   - granra/plex_exporter:arm64
