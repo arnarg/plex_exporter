@@ -1,0 +1,10 @@
+---
+version: "2.1"
+services:
+  plex_exporter:
+    image: granra/plex_exporter:latest
+    command: --token {your_token} --auto-discover
+    # Get your token by running `docker run granra/plex_exporter:latest token`
+    ports:
+      - 9594:9594
+    restart: unless-stopped
