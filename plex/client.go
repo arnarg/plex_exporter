@@ -49,6 +49,10 @@ func NewPlexClient(c *config.PlexConfig, l *log.Entry) (*PlexClient, error) {
 		}
 	}
 
+	if len(serverList) < 1 {
+		return nil, fmt.Errorf("Could not find a plex server")
+	}
+
 	l.Infof("Found %d working servers", len(serverList))
 
 	return &PlexClient{
