@@ -7,11 +7,15 @@ import (
 )
 
 type PlexCollector struct {
-	Logger         *log.Entry
-	client         *plex.PlexClient
-	serverInfo     *prometheus.Desc
-	sessionsMetric *prometheus.Desc
-	libraryMetric  *prometheus.Desc
+	Logger                   *log.Entry
+	client                   *plex.PlexClient
+	serverInfo               *prometheus.Desc
+	sessionsMetric           *prometheus.Desc
+	libraryMetric            *prometheus.Desc
+	showLibraryMetric        *prometheus.Desc
+	showLibrarySeasonMetric  *prometheus.Desc
+	showLibraryEpisodeMetric *prometheus.Desc
+	showLibraryWatchedMetric *prometheus.Desc
 }
 
 func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
@@ -30,6 +34,22 @@ func NewPlexCollector(c *plex.PlexClient, l *log.Entry) *PlexCollector {
 			"Number of items in a library section",
 			[]string{"server_name", "server_id", "name", "type"}, nil,
 		),
+		showLibraryMetric: prometheus.NewDesc("plex_library_section_show_count",
+			"Number of shows in a library section of type show",
+			[]string{"server_name", "server_id", "name"}, nil,
+		),
+		showLibrarySeasonMetric: prometheus.NewDesc("plex_library_section_show_season_count",
+			"Number of seasons in a library section of type show",
+			[]string{"server_name", "server_id", "name"}, nil,
+		),
+		showLibraryEpisodeMetric: prometheus.NewDesc("plex_library_section_show_episode_count",
+			"Number of episodes in a library section of type show",
+			[]string{"server_name", "server_id", "name"}, nil,
+		),
+		showLibraryWatchedMetric: prometheus.NewDesc("plex_library_section_show_watched_count",
+			"Number of watched episodes in a library section of type show",
+			[]string{"server_name", "server_id", "name"}, nil,
+		),
 	}
 }
 
@@ -37,6 +57,10 @@ func (c *PlexCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.serverInfo
 	ch <- c.sessionsMetric
 	ch <- c.libraryMetric
+	ch <- c.showLibraryMetric
+	ch <- c.showLibrarySeasonMetric
+	ch <- c.showLibraryEpisodeMetric
+	ch <- c.showLibraryWatchedMetric
 }
 
 func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
@@ -49,6 +73,13 @@ func (c *PlexCollector) Collect(ch chan<- prometheus.Metric) {
 
 		for _, l := range v.Libraries {
 			ch <- prometheus.MustNewConstMetric(c.libraryMetric, prometheus.GaugeValue, float64(l.Size), v.Name, v.ID, l.Name, l.Type)
+		}
+		for _, s := range v.ShowLibraries {
+			ch <- prometheus.MustNewConstMetric(c.libraryMetric, prometheus.GaugeValue, float64(s.ShowSize), v.Name, v.ID, s.Name, s.Type)
+			ch <- prometheus.MustNewConstMetric(c.showLibraryMetric, prometheus.GaugeValue, float64(s.ShowSize), v.Name, v.ID, s.Name)
+			ch <- prometheus.MustNewConstMetric(c.showLibrarySeasonMetric, prometheus.GaugeValue, float64(s.SeasonSize), v.Name, v.ID, s.Name)
+			ch <- prometheus.MustNewConstMetric(c.showLibraryEpisodeMetric, prometheus.GaugeValue, float64(s.EpisodeSize), v.Name, v.ID, s.Name)
+			ch <- prometheus.MustNewConstMetric(c.showLibraryWatchedMetric, prometheus.GaugeValue, float64(s.WatchedSize), v.Name, v.ID, s.Name)
 		}
 	}
 }

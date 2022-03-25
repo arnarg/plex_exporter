@@ -99,18 +99,37 @@ func (c *PlexClient) GetServerMetrics() map[string]ServerMetric {
 			if err != nil {
 				logger.Debugf("Could not convert sections ID to int. (%s)", section.ID)
 			}
-			size, err := server.GetSectionSize(id)
-			if err != nil {
-				logger.Debugf("Could not get section size for \"%s\": %s", section.Name, err)
-				continue
-			}
-			libraryMetric := LibraryMetric{
-				Name: section.Name,
-				Type: section.Type,
-				Size: size,
+			if section.Type == "show" {
+				showCount, seasonCount, episodeCount, watchedEpisodeCount, err := server.GetShowSectionSize(id)
+				if err != nil {
+					logger.Debugf("Could not get show section sizes for \"%s\": %s", section.Name, err)
+					continue
+				}
+				showLibraryMetrics := ShowLibraryMetric{
+					Name:        section.Name,
+					Type:        section.Type,
+					ShowSize:    showCount,
+					SeasonSize:  seasonCount,
+					EpisodeSize: episodeCount,
+					WatchedSize: watchedEpisodeCount,
+				}
+
+				serverMetric.ShowLibraries = append(serverMetric.ShowLibraries, showLibraryMetrics)
+			} else {
+				size, err := server.GetSectionSize(id)
+				if err != nil {
+					logger.Debugf("Could not get section size for \"%s\": %s", section.Name, err)
+					continue
+				}
+				libraryMetric := LibraryMetric{
+					Name: section.Name,
+					Type: section.Type,
+					Size: size,
+				}
+
+				serverMetric.Libraries = append(serverMetric.Libraries, libraryMetric)
 			}
 
-			serverMetric.Libraries = append(serverMetric.Libraries, libraryMetric)
 		}
 
 		serverMap[server.Name] = serverMetric
